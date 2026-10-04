@@ -94,3 +94,58 @@ a {
   font-family: monospace;
 
 }
+
+/* ---- character + cloud bubble: stands on the ground line (bottom-left), fades in slowly after the text is fully typed ---- */
+#buddy {
+  position: absolute;
+  left: 4px;
+  bottom: 0; /* image bottom = bottom of the wrap = the ground line */
+  width: 184px;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+#buddy picture {
+  display: block;
+}
+#buddy-img {
+  display: block;
+  margin: 0 auto;
+  height: 260px;
+  width: auto;
+  opacity: 0;
+  transition: opacity 3.2s ease-in-out;
+}
+#bubble {
+  position: relative;
+  width: 184px;
+  height: 101px;
+  margin: 0 auto -4px;
+  opacity: 0;
+  transition: opacity 3.2s ease-in-out 0.8s;
+  filter: drop-shadow(0 3px 5px rgba(232, 67, 147, 0.25));
+}
+#bubble svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.bubble-text {
+  position: absolute;
+  left: 17%;
+  right: 17%;
+  top: 14%;
+  height: 54%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #8e1f4f;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.25;
+}
+#buddy.show #buddy-img,
+#buddy.show #bubble {
+  opacity: 1;
+}

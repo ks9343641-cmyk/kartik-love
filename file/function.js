@@ -28,6 +28,7 @@ $(window).resize(function() {
 				$ele.html(str.substring(0, progress) + (progress & 1 ? '_' : ''));
 				if (progress >= str.length) {
 					clearInterval(timer);
+					$('#buddy').addClass('show'); // text finished -> character + bubble fade in slowly
 				}
 			}, 75);
 		});

@@ -13,6 +13,7 @@
     <script type="text/javascript" src="file/jscex-async-powerpack.min.js"></script>
     <script type="text/javascript" src="file/function.js" charset="utf-8"></script>
     <script type="text/javascript" src="file/love.js" charset="utf-8"></script>
+    <script type="text/javascript" src="file/wind.js" charset="utf-8"></script>
     <script>
         function playAudio() {
             var audio = document.getElementById("myAudio");
@@ -47,6 +48,35 @@
             </div>
             <canvas id="canvas" width="1100" height="680"></canvas>
             <canvas id="leaves-canvas" width="1100" height="680"></canvas>
+            <div id="buddy">
+                <div id="bubble">
+                    <svg viewBox="0 0 230 126" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <g fill="#f48fb1" stroke="#f48fb1" stroke-width="6">
+                            <ellipse cx="115" cy="52" rx="92" ry="30"/>
+                            <circle cx="38" cy="54" r="22"/><circle cx="62" cy="36" r="24"/>
+                            <circle cx="96" cy="28" r="26"/><circle cx="134" cy="28" r="26"/>
+                            <circle cx="168" cy="36" r="24"/><circle cx="192" cy="54" r="22"/>
+                            <circle cx="168" cy="72" r="22"/><circle cx="134" cy="78" r="24"/>
+                            <circle cx="96" cy="78" r="24"/><circle cx="62" cy="72" r="22"/>
+                            <circle cx="118" cy="109" r="7"/><circle cx="123" cy="121" r="4.5"/>
+                        </g>
+                        <g fill="#ffffff">
+                            <ellipse cx="115" cy="52" rx="92" ry="30"/>
+                            <circle cx="38" cy="54" r="22"/><circle cx="62" cy="36" r="24"/>
+                            <circle cx="96" cy="28" r="26"/><circle cx="134" cy="28" r="26"/>
+                            <circle cx="168" cy="36" r="24"/><circle cx="192" cy="54" r="22"/>
+                            <circle cx="168" cy="72" r="22"/><circle cx="134" cy="78" r="24"/>
+                            <circle cx="96" cy="78" r="24"/><circle cx="62" cy="72" r="22"/>
+                            <circle cx="118" cy="109" r="7"/><circle cx="123" cy="121" r="4.5"/>
+                        </g>
+                    </svg>
+                    <span class="bubble-text">Aur Ceo Kya<br>Haal Hai 😉</span>
+                </div>
+                <picture>
+                    <source srcset="buddy.webp" type="image/webp">
+                    <img id="buddy-img" src="buddy.png" alt="">
+                </picture>
+            </div>
         </div>
     </div>
 
@@ -394,6 +424,7 @@
             $await(flowAnimate());
             $await(moveAnimate());
             startLeaves();
+            if (window.startWindLeaves) { window.startWindLeaves(); }
             textAnimate().start();
         }));
 
