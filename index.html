@@ -173,12 +173,14 @@
             foot.draw();
             tree.snapshot("p2", 500, 0, 610, 680);
 
-            var treeSnapshotUrl = tree.toDataURL('image/png');
-            canvas.parent().css("background", "url(" + treeSnapshotUrl + ")");
-            treeImage.src = treeSnapshotUrl; // same exact pixels (branches included) reused for the sway overlay
-            canvas.css("background", "#FFF0F5");
-            $await(Jscex.Async.sleep(300));
-            canvas.css("background", "none");
+                        // PNG encode ki jagah offscreen canvas me copy (fast, freeze nahi hota)
+            var off = document.createElement('canvas');
+            off.width = width;
+            off.height = height;
+            off.getContext('2d').drawImage(canvas[0], 0, 0);
+            treeImage = off;
+            treeImageReady = true;
+
             $("body").css("background-color", "#FFF0F5");
         }));
 
