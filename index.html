@@ -1,0 +1,402 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>HBD love</title>	    
+    <link type="text/css" rel="stylesheet" href="file/default.css">
+    <script type="text/javascript" src="file/jquery.min.js"></script>
+    <script type="text/javascript" src="file/jscex.min.js"></script>
+    <script type="text/javascript" src="file/jscex-parser.js"></script>
+    <script type="text/javascript" src="file/jscex-jit.js"></script>
+    <script type="text/javascript" src="file/jscex-builderbase.min.js"></script>
+    <script type="text/javascript" src="file/jscex-async.min.js"></script>
+    <script type="text/javascript" src="file/jscex-async-powerpack.min.js"></script>
+    <script type="text/javascript" src="file/function.js" charset="utf-8"></script>
+    <script type="text/javascript" src="file/love.js" charset="utf-8"></script>
+    <script>
+        function playAudio() {
+            var audio = document.getElementById("myAudio");
+            audio.play();
+        }
+    </script>
+</head>
+<body>
+    <div id="main">
+        <div id="error"><a href="http://www.google.cn/chrome/intl/zh-CN/landing_chrome.html?hl=zh-CN&brand=CHMI">Chrome</a> (<a href="http://firefox.com.cn/download/">Firefox</a>)</div>
+        <audio autoplay="autoplay" height="100" width="100" id="myAudio">
+            <source src="aud.mp3" type="audio/mp3" />
+            <embed height="100" width="100" src="aud.mp3" />
+        </audio>
+        <div id="wrap">
+            <div id="text">
+                <div id="code">
+                    <span class="say">Hey you 💞</span><br>
+                    <span class="say">Makhana🎈</span><br>
+                    <span class="say">May God bless you🍀</span><br>
+                    <span class="say">And give u many happiness 💕</span><br>
+                    <span class="say">Just saying... you're pretty awesome❤️</span><br>
+                    <span class="say">Sending good vibes and maybe a wink 😏</span><br>
+                    <span class="say">Hope u have a great day today ❤️😊</span><br>
+                    <span class="say">itni sundar hone ka raaz mujhe bhi bata do 😒😉</span><br>
+                    <span class="say">Tata Tata bye bye 👋 </span><br>
+					<span class="say">nd take care 🤗</span><br>
+                </div>
+            </div>
+            <div id="clock-box">
+                <span id="clock">577 days 0 hours 0 minutes 0 seconds</span> <!-- Change to "6940 days..." if needed -->
+            </div>
+            <canvas id="canvas" width="1100" height="680"></canvas>
+            <canvas id="leaves-canvas" width="1100" height="680"></canvas>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var canvas = $('#canvas');
+		
+        if (!canvas[0].getContext) {
+            $("#error").show();
+            return false;
+        }
+
+        var width = canvas.width();
+        var height = canvas.height();        
+        canvas.attr("width", width);
+        canvas.attr("height", height);
+
+        var opts = {
+            seed: {
+                x: width / 2 - 20,
+                color: "rgb(190, 26, 37)",
+                scale: 2
+            },
+            branch: [
+                [535, 680, 570, 250, 500, 200, 30, 100, [
+                    [540, 500, 455, 417, 340, 400, 13, 100, [
+                        [450, 435, 434, 430, 394, 395, 2, 40]
+                    ]],
+                    [550, 445, 600, 356, 680, 345, 12, 100, [
+                        [578, 400, 648, 409, 661, 426, 3, 80]
+                    ]],
+                    [539, 281, 537, 248, 534, 217, 3, 40],
+                    [546, 397, 413, 247, 328, 244, 9, 80, [
+                        [427, 286, 383, 253, 371, 205, 2, 40],
+                        [498, 345, 435, 315, 395, 330, 4, 60]
+                    ]],
+                    [546, 357, 608, 252, 678, 221, 6, 100, [
+                        [590, 293, 646, 277, 648, 271, 2, 80]
+                    ]]
+                ]] 
+            ],
+            bloom: {
+                num: 1100,
+                width: 1080,
+                height: 650,
+            },
+            footer: {
+                width: 1200,
+                height: 5,
+                speed: 10,
+            }
+        }
+
+        var tree = new Tree(canvas[0], width, height, opts);
+        var seed = tree.seed;
+        var foot = tree.footer;
+        var hold = 1;
+
+        // Every bloom's final position/color/figure is already decided right here (see Tree.initBloom /
+        // createBloom in love.js) even though they haven't animated in yet. Grabbing a copy now lets us
+        // later redraw the same leaves with a gentle wind sway, without touching anything in love.js.
+        var swayBlooms = tree.bloomsCache.slice();
+        for (var sb = 0; sb < swayBlooms.length; sb++) {
+            swayBlooms[sb]._swayPhase = Math.random() * Math.PI * 2;
+            swayBlooms[sb]._swayFreq = 0.6 + Math.random() * 0.5;
+            swayBlooms[sb]._swayAmpX = 1.2 + Math.random() * 1.8;
+            swayBlooms[sb]._swayRot = 0.03 + Math.random() * 0.04;
+        }
+
+        canvas.click(function(e) {
+            playAudio();
+            var offset = canvas.offset(), x, y;
+            x = e.pageX - offset.left;
+            y = e.pageY - offset.top;
+            if (seed.hover(x, y)) {
+                hold = 0; 
+                canvas.unbind("click");
+                canvas.unbind("mousemove");
+                canvas.removeClass('hand');
+            }
+        }).mousemove(function(e) {
+            var offset = canvas.offset(), x, y;
+            x = e.pageX - offset.left;
+            y = e.pageY - offset.top;
+            canvas.toggleClass('hand', seed.hover(x, y));
+        });
+
+        var seedAnimate = eval(Jscex.compile("async", function () {
+            seed.draw();
+            while (hold) {
+                $await(Jscex.Async.sleep(10));
+            }
+            while (seed.canScale()) {
+                seed.scale(0.95);
+                $await(Jscex.Async.sleep(10));
+            }
+            while (seed.canMove()) {
+                seed.move(0, 2);
+                foot.draw();
+                $await(Jscex.Async.sleep(10));
+            }
+        }));
+
+        var growAnimate = eval(Jscex.compile("async", function () {
+            do {
+                tree.grow();
+                $await(Jscex.Async.sleep(10));
+            } while (tree.canGrow());
+        }));
+
+        var flowAnimate = eval(Jscex.compile("async", function () {
+            do {
+                tree.flower(3);
+                $await(Jscex.Async.sleep(10));
+            } while (tree.canFlower());
+        }));
+
+        var moveAnimate = eval(Jscex.compile("async", function () {
+            tree.snapshot("p1", 240, 0, 610, 680);
+            while (tree.move("p1", 500, 0)) {
+                foot.draw();
+                $await(Jscex.Async.sleep(10));
+            }
+            foot.draw();
+            tree.snapshot("p2", 500, 0, 610, 680);
+
+            var treeSnapshotUrl = tree.toDataURL('image/png');
+            canvas.parent().css("background", "url(" + treeSnapshotUrl + ")");
+            treeImage.src = treeSnapshotUrl; // same exact pixels (branches included) reused for the sway overlay
+            canvas.css("background", "#FFF0F5");
+            $await(Jscex.Async.sleep(300));
+            canvas.css("background", "none");
+            $("body").css("background-color", "#FFF0F5");
+        }));
+
+        var textAnimate = eval(Jscex.compile("async", function () {
+            $("#code").show().typewriter();
+        }));
+
+        // Holds the exact baked tree image (branches + original leaves) captured in moveAnimate, so the
+        // sway overlay can redraw the real branches underneath the swaying leaves instead of blanking them.
+        var treeImage = new Image();
+        var treeImageReady = false;
+        treeImage.onload = function () { treeImageReady = true; };
+
+        // ---- Continuous heart-shaped leaves: grow inside the heart canopy (matching its real on-screen
+        // position after the tree slides over), fall to the ground, sit a moment, fade away, regrow -- forever ----
+        function inheart(x, y, r) {
+            var z = ((x / r) * (x / r) + (y / r) * (y / r) - 1) * ((x / r) * (x / r) + (y / r) * (y / r) - 1) * ((x / r) * (x / r) + (y / r) * (y / r) - 1) - (x / r) * (x / r) * (y / r) * (y / r) * (y / r);
+            return z < 0;
+        }
+
+        var heartPoints = (function() {
+            var pts = [], x, y, t;
+            for (var i = 10; i < 30; i += 0.4) {
+                t = i / Math.PI;
+                x = 16 * Math.pow(Math.sin(t), 3);
+                y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                pts.push({ x: x, y: y });
+            }
+            return pts;
+        })();
+
+        var leafColors = ['#ff6b81', '#ff4757', '#e84393', '#fd79a8', '#c0392b', '#eb2f06'];
+
+        var leafCanvasEl = document.getElementById('leaves-canvas');
+        leafCanvasEl.width = width;
+        leafCanvasEl.height = height;
+        var leafCtx = leafCanvasEl.getContext('2d');
+
+        // The canopy's heart shape is generated with this same width/height/radius (see opts.bloom &
+        // Tree.createBloom above). But moveAnimate later slides the whole tree from x=240 to x=500
+        // (a +260px shift) to its final resting spot. Leaves must use that SAME shift or they end up
+        // floating over the old, pre-move position instead of under the real tree.
+        var canopy = opts.bloom;
+        var canopyR = 240;
+        var TREE_SHIFT_X = 500 - 240; // matches tree.snapshot("p1", 240, ...) -> tree.move("p1", 500, ...)
+        var GROUND_Y = height - 12;   // just above the trunk/ground line
+
+        function pickHeartSpot(biasTop) {
+            var x, y, tries = 0, cw = canopy.width, ch = canopy.height;
+            do {
+                x = random(20, cw - 20);
+                y = biasTop ? random(20, ch * 0.5) : random(20, ch - 20);
+                tries++;
+            } while (!inheart(x - cw / 2, ch - (ch - 40) / 2 - y, canopyR) && tries < 80);
+            return { x: x + TREE_SHIFT_X, y: y };
+        }
+
+        function spawnLeaf() {
+            var spot = pickHeartSpot(true);
+            return {
+                x: spot.x,
+                y: spot.y,
+                state: 'growing',   // growing -> falling -> landed
+                scale: 0,
+                rotation: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.04,
+                sway: Math.random() * Math.PI * 2,
+                swaySpeed: 0.015 + Math.random() * 0.02,
+                fallSpeed: 0.6 + Math.random() * 1.5,
+                color: leafColors[random(0, leafColors.length - 1)],
+                alpha: 1,
+                landTimer: 0,
+                landHold: 30 + random(0, 60)
+            };
+        }
+
+        function drawLeaf(leaf) {
+            leafCtx.save();
+            leafCtx.globalAlpha = Math.max(leaf.alpha, 0);
+            leafCtx.fillStyle = leaf.color;
+            leafCtx.translate(leaf.x, leaf.y);
+            leafCtx.rotate(leaf.rotation);
+            leafCtx.scale(leaf.scale * 0.7, leaf.scale * 0.7);
+            leafCtx.beginPath();
+            leafCtx.moveTo(0, 0);
+            for (var i = 0; i < heartPoints.length; i++) {
+                leafCtx.lineTo(heartPoints[i].x, -heartPoints[i].y);
+            }
+            leafCtx.closePath();
+            leafCtx.fill();
+            leafCtx.restore();
+        }
+
+        var LEAF_COUNT = 80;
+        var leaves = [];
+
+        // Precise heart-shaped outline (matches the tree's own heart formula/radius, with a small
+        // margin for each leaf's own size), stored as offsets from the canopy's center. We clip to
+        // this exact heart before repainting, so only real leaf pixels ever get touched -- the trunk,
+        // ground and everything else is completely untouched no matter what.
+        var HEART_BOUNDARY = [[254.4,0.0],[263.0,18.4],[270.9,38.1],[277.8,59.0],[283.4,81.3],[287.5,104.6],[289.6,128.9],[289.3,153.8],[286.3,178.9],[280.2,203.6],[270.8,227.3],[258.1,249.2],[242.1,268.9],[223.0,285.5],[201.4,298.6],[177.8,307.9],[152.8,313.2],[127.1,314.6],[101.4,312.2],[76.4,306.3],[52.4,297.2],[30.0,285.0],[9.4,268.7],[-9.4,268.7],[-30.0,285.0],[-52.4,297.2],[-76.4,306.3],[-101.4,312.2],[-127.1,314.6],[-152.8,313.2],[-177.8,307.9],[-201.4,298.6],[-223.0,285.5],[-242.1,268.9],[-258.1,249.2],[-270.8,227.3],[-280.2,203.6],[-286.3,178.9],[-289.3,153.8],[-289.6,128.9],[-287.5,104.6],[-283.4,81.3],[-277.8,59.0],[-270.9,38.1],[-263.0,18.4],[-254.4,0.0],[-245.3,-17.2],[-235.8,-33.1],[-226.1,-48.1],[-216.2,-62.0],[-206.2,-75.0],[-196.0,-87.3],[-185.9,-98.8],[-175.7,-109.8],[-165.4,-120.1],[-155.0,-130.1],[-144.5,-139.6],[-133.9,-148.7],[-123.1,-157.6],[-112.1,-166.3],[-100.9,-174.8],[-89.3,-183.2],[-77.4,-191.5],[-65.0,-200.0],[-52.0,-208.7],[-38.4,-218.0],[-24.0,-228.3],[-8.4,-241.5],[8.4,-241.5],[24.0,-228.3],[38.4,-218.0],[52.0,-208.7],[65.0,-200.0],[77.4,-191.5],[89.3,-183.2],[100.9,-174.8],[112.1,-166.3],[123.1,-157.6],[133.9,-148.7],[144.5,-139.6],[155.0,-130.1],[165.4,-120.1],[175.7,-109.8],[185.9,-98.8],[196.0,-87.3],[206.2,-75.0],[216.2,-62.0],[226.1,-48.1],[235.8,-33.1],[245.3,-17.2]];
+        var CANOPY_CENTER_X = canopy.width / 2 + TREE_SHIFT_X; // 800
+        var CANOPY_CENTER_Y = canopy.height - (canopy.height - 40) / 2; // 345, same formula createBloom uses
+        var PAGE_BG = '#FFF3F6';
+        var windTime = 0;
+
+        function drawSwayingCanopy() {
+            if (!treeImageReady) return; // keep showing the static baked image (with branches) until ready
+
+            leafCtx.save();
+            leafCtx.beginPath();
+            for (var k = 0; k < HEART_BOUNDARY.length; k++) {
+                var hx = CANOPY_CENTER_X + HEART_BOUNDARY[k][0];
+                var hy = CANOPY_CENTER_Y - HEART_BOUNDARY[k][1];
+                if (k === 0) { leafCtx.moveTo(hx, hy); } else { leafCtx.lineTo(hx, hy); }
+            }
+            leafCtx.closePath();
+            leafCtx.clip(); // everything drawn below is confined strictly to the heart shape
+
+            // Redraw the real baked tree (branches included) as the base, so branches stay visible
+            // exactly like before -- only the leaves on top of it will visibly sway.
+            leafCtx.drawImage(treeImage, 0, 0, width, height);
+
+            for (var i = 0; i < swayBlooms.length; i++) {
+                var b = swayBlooms[i];
+                var sway = Math.sin(windTime * b._swayFreq + b._swayPhase);
+                var x = b.point.x + TREE_SHIFT_X + sway * b._swayAmpX;
+                var y = b.point.y;
+                var scale = b.scale > 1 ? 1 : b.scale;
+
+                leafCtx.save();
+                leafCtx.globalAlpha = b.alpha;
+                leafCtx.fillStyle = b.color;
+                leafCtx.translate(x, y);
+                leafCtx.scale(scale, scale);
+                leafCtx.rotate(b.angle + sway * b._swayRot);
+                leafCtx.beginPath();
+                leafCtx.moveTo(0, 0);
+                for (var j = 0; j < b.figure.length; j++) {
+                    var p = b.figure.get(j);
+                    leafCtx.lineTo(p.x, -p.y);
+                }
+                leafCtx.closePath();
+                leafCtx.fill();
+                leafCtx.restore();
+            }
+            leafCtx.restore();
+        }
+
+        function initLeaves() {
+    for (var i = 0; i < LEAF_COUNT; i++) {
+        var l = spawnLeaf();
+
+        // Start every leaf inside the canopy.
+        // Different starting sizes make the falling look natural.
+        l.state = 'growing';
+        l.scale = Math.random() * 0.8;
+
+        leaves.push(l);
+    }
+}
+
+        function leafLoop() {
+            leafCtx.clearRect(0, 0, leafCanvasEl.width, leafCanvasEl.height);
+            windTime += 0.02;
+            drawSwayingCanopy();
+            for (var i = 0; i < leaves.length; i++) {
+                var l = leaves[i];
+
+                if (l.state === 'growing') {
+                    l.scale += 0.035;
+                    if (l.scale >= 1) {
+                        l.scale = 1;
+                        l.state = 'falling';
+                    }
+                } else if (l.state === 'falling') {
+                    l.sway += l.swaySpeed;
+                    l.x += Math.sin(l.sway) * 0.6;
+                    l.y += l.fallSpeed;
+                    l.rotation += l.rotSpeed;
+                    if (l.y >= GROUND_Y) {
+                        l.y = GROUND_Y;
+                        l.state = 'landed';
+                        l.landTimer = 0;
+                    }
+                } else if (l.state === 'landed') {
+                    l.landTimer++;
+                    if (l.landTimer > l.landHold) {
+                        l.alpha -= 0.05; // sits on the ground a moment, then fades
+                    }
+                }
+
+                drawLeaf(l);
+
+                if (l.alpha <= 0) {
+                    leaves[i] = spawnLeaf(); // gone -> a fresh leaf sprouts back in the heart
+                }
+            }
+            requestAnimationFrame(leafLoop);
+        }
+
+        function startLeaves() {
+            initLeaves();
+            requestAnimationFrame(leafLoop);
+        }
+        // ---- end continuous leaves ----
+
+        var runAsync = eval(Jscex.compile("async", function () {
+            $await(seedAnimate());
+            $await(growAnimate());
+            $await(flowAnimate());
+            $await(moveAnimate());
+            startLeaves();
+            textAnimate().start();
+        }));
+
+        runAsync().start();
+    })();
+    </script>
+</body>
+</html>
