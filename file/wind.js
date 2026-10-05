@@ -6,7 +6,6 @@
  *   - every leaf is a tiny element moved with GPU transforms (no full-screen canvas,
  *     no full-screen clearing every frame)
  *   - it starts only after the black -> pink transition has finished
- *   - if a device turns out to be slow, it quietly drops some leaves
  *
  * Two layers: "back" sits behind the text (most leaves, so reading stays easy),
  * "front" sits above the text (a few small, slightly see-through leaves).
@@ -30,7 +29,6 @@
     var backBox, frontBox;
     var leaves = [];
     var t0 = 0, lastTs = 0, clock = 0;
-    var slowFrames = 0, checkedFrames = 0, degradeStep = 0, nextCheck = 0;
 
     // Heart outline built once from the heart formula, plus its size, so every leaf keeps the right proportions.
     var HEART = (function () {
@@ -140,28 +138,9 @@
                                ang.toFixed(3) + 'rad) scale(' + squash.toFixed(3) + ',1)';
     }
 
-    // If the device is struggling, quietly remove some leaves (never on a normal laptop/phone).
-    function adaptToSpeed(rawDt, ts) {
-        if (degradeStep >= 2) { return; }
-        checkedFrames++;
-        if (rawDt > 45) { slowFrames++; }
-        if (ts >= nextCheck) {
-            if (checkedFrames > 20 && slowFrames / checkedFrames > 0.5) {
-                degradeStep++;
-                var target = Math.max(8, Math.round(leaves.length * 0.65));
-                while (leaves.length > target) {
-                    var gone = leaves.pop();
-                    if (gone.el.parentNode) { gone.el.parentNode.removeChild(gone.el); }
-                }
-            }
-            slowFrames = 0; checkedFrames = 0; nextCheck = ts + 3000;
-        }
-    }
-
     function frame(ts) {
         if (!lastTs) { lastTs = ts; }
-        var rawDt = ts - lastTs;
-        var dt = Math.min(rawDt / 16.667, 3);                 // frame-rate independent, capped after tab switch
+        var dt = Math.min((ts - lastTs) / 16.667, 3);                 // frame-rate independent, capped after tab switch
         lastTs = ts;
         clock += dt / 60;
 
@@ -178,7 +157,6 @@
             paint(l);
             if (fading || justFinished) { l.el.style.opacity = (l.alpha * fade).toFixed(3); }
         }
-        if (ts > t0 + FADE_IN_MS) { adaptToSpeed(rawDt, ts); }
         requestAnimationFrame(frame);
     }
 
@@ -190,7 +168,6 @@
         buildLeaves();
         window.addEventListener('resize', function () { W = window.innerWidth; H = window.innerHeight; });
         t0 = performance.now();
-        nextCheck = t0 + FADE_IN_MS + 3000;
         requestAnimationFrame(frame);
     }
 
