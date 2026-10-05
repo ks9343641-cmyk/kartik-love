@@ -1,9 +1,15 @@
 /*
  * Wind leaves: heart-shaped leaves that drift and flutter across the WHOLE screen,
  * including the area where the typewriter text is written.
- * It lives on two extra canvases and does not touch the tree code in love.js:
- *   - "back" canvas sits behind the text (most leaves, so reading stays easy)
- *   - "front" canvas sits above the text (a few small, slightly see-through leaves)
+ *
+ * Built to be light on phones and laptops:
+ *   - every leaf is a tiny element moved with GPU transforms (no full-screen canvas,
+ *     no full-screen clearing every frame)
+ *   - it starts only after the black -> pink transition has finished
+ *   - if a device turns out to be slow, it quietly drops some leaves
+ *
+ * Two layers: "back" sits behind the text (most leaves, so reading stays easy),
+ * "front" sits above the text (a few small, slightly see-through leaves).
  *
  * Start it with:  startWindLeaves();
  *
@@ -16,57 +22,66 @@
     var WIND_SPEED = 1;
 
     var COLORS = ['#ff6b81', '#ff4757', '#e84393', '#fd79a8', '#c0392b', '#eb2f06'];
-    var FADE_IN_MS = 3000;   // leaves appear softly, not all at once
+    var START_DELAY_MS = 1500; // wait until the background fade (1.2 s) is finished
+    var FADE_IN_MS = 3000;     // leaves appear softly, not all at once
     var started = false;
 
-    var W = 0, H = 0, dpr = 1;
-    var back, front, backCtx, frontCtx;
+    var W = 0, H = 0;
+    var backBox, frontBox;
     var leaves = [];
     var t0 = 0, lastTs = 0, clock = 0;
+    var slowFrames = 0, checkedFrames = 0, degradeStep = 0, nextCheck = 0;
 
-    // Heart outline (about 32 x 29 units), drawn once and reused for every leaf.
-    var heart = new Path2D();
-    (function () {
+    // Heart outline built once from the heart formula, plus its size, so every leaf keeps the right proportions.
+    var HEART = (function () {
+        var pts = [], minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
         for (var a = 0; a <= Math.PI * 2 + 0.01; a += 0.1) {
             var x = 16 * Math.pow(Math.sin(a), 3);
-            var y = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) - 2.5;
-            if (a === 0) { heart.moveTo(x, y); } else { heart.lineTo(x, y); }
+            var y = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a));
+            pts.push([x, y]);
+            if (x < minX) minX = x; if (x > maxX) maxX = x;
+            if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
-        heart.closePath();
+        var d = '';
+        for (var i = 0; i < pts.length; i++) {
+            d += (i === 0 ? 'M' : 'L') + pts[i][0].toFixed(2) + ' ' + pts[i][1].toFixed(2);
+        }
+        return { path: d + 'Z', x: minX - 1, y: minY - 1, w: maxX - minX + 2, h: maxY - minY + 2 };
     })();
+
+    // One small SVG picture per colour (crisp at any size). Pre-loaded right away so nothing has to be decoded mid-animation.
+    var SRC = {};
+    COLORS.forEach(function (c) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + HEART.x + ' ' + HEART.y + ' ' + HEART.w + ' ' + HEART.h +
+                  '"><path d="' + HEART.path + '" fill="' + c + '"/></svg>';
+        SRC[c] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        new Image().src = SRC[c];
+    });
 
     function rand(min, max) { return min + Math.random() * (max - min); }
 
-    function makeCanvas(zIndex, id) {
-        var c = document.createElement('canvas');
-        c.id = id;
-        c.style.position = 'fixed';
-        c.style.left = '0';
-        c.style.top = '0';
-        c.style.width = '100%';
-        c.style.height = '100%';
-        c.style.pointerEvents = 'none';
-        c.style.zIndex = String(zIndex);
-        document.body.appendChild(c);
-        return c;
-    }
-
-    function resize() {
-        W = window.innerWidth;
-        H = window.innerHeight;
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-        [back, front].forEach(function (c) {
-            c.width = Math.round(W * dpr);
-            c.height = Math.round(H * dpr);
-        });
+    function makeBox(zIndex, id) {
+        var box = document.createElement('div');
+        box.id = id;
+        box.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:' + zIndex + ';';
+        document.body.appendChild(box);
+        return box;
     }
 
     function makeLeaf(layer, anywhere) {
         var small = layer === 1;                              // layer 1 = front (above text)
         var size = small ? rand(0.28, 0.42) : rand(0.36, 0.8);
+        var color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        var w = 32 * size, h = w * HEART.h / HEART.w;
+        var el = new Image();
+        el.src = SRC[color];
+        el.alt = '';
+        el.draggable = false;
+        el.style.cssText = 'position:absolute;left:0;top:0;display:block;opacity:0;will-change:transform;' +
+                           'width:' + w.toFixed(1) + 'px;height:' + h.toFixed(1) + 'px;';
+        (small ? frontBox : backBox).appendChild(el);
         return {
-            layer: layer,
-            size: size,
+            el: el, layer: layer, w: w, h: h,
             x: rand(-60, W + 60),
             y: anywhere ? rand(-30, H + 30) : rand(-120, -30),
             vx: 0,
@@ -79,7 +94,6 @@
             flip: rand(0, Math.PI * 2),
             flipSpeed: rand(0.025, 0.06),
             weight: rand(0.6, 1.4),                           // how strongly the wind pushes this leaf
-            color: COLORS[Math.floor(Math.random() * COLORS.length)],
             alpha: small ? rand(0.7, 0.85) : rand(0.55, 0.95)
         };
     }
@@ -87,7 +101,6 @@
     function buildLeaves() {
         var total = Math.round(Math.max(16, Math.min(46, (W * H) / 38000)) * WIND_DENSITY);
         var frontCount = Math.max(4, Math.round(total * 0.25));
-        leaves = [];
         for (var i = 0; i < total; i++) {
             leaves.push(makeLeaf(i < frontCount ? 1 : 0, true));
         }
@@ -102,7 +115,7 @@
         };
     }
 
-    function update(l, dt, wind) {
+    function step(l, dt, wind) {
         l.vx += (wind.x * l.weight - l.vx) * 0.04 * dt;       // leaf follows the wind smoothly
         l.x += (l.vx + Math.sin(l.phase) * l.swayAmp) * dt * WIND_SPEED;
         l.y += (l.vy * WIND_SPEED - wind.lift * l.weight * 0.9) * dt;
@@ -120,52 +133,70 @@
         else if (l.x < -70) { l.x = W + 60; }
     }
 
-    function drawLeaf(ctx, l, fade) {
+    function paint(l) {
         var squash = 0.3 + 0.7 * Math.abs(Math.cos(l.flip)); // turning in the air
-        ctx.save();
-        ctx.globalAlpha = l.alpha * fade;
-        ctx.fillStyle = l.color;
-        ctx.translate(l.x, l.y);
-        ctx.rotate(l.rot + Math.sin(l.phase * 1.3) * 0.6);
-        ctx.scale(l.size * squash, l.size);
-        ctx.fill(heart);
-        ctx.restore();
+        var ang = l.rot + Math.sin(l.phase * 1.3) * 0.6;
+        l.el.style.transform = 'translate3d(' + (l.x - l.w / 2).toFixed(1) + 'px,' + (l.y - l.h / 2).toFixed(1) + 'px,0) rotate(' +
+                               ang.toFixed(3) + 'rad) scale(' + squash.toFixed(3) + ',1)';
+    }
+
+    // If the device is struggling, quietly remove some leaves (never on a normal laptop/phone).
+    function adaptToSpeed(rawDt, ts) {
+        if (degradeStep >= 2) { return; }
+        checkedFrames++;
+        if (rawDt > 45) { slowFrames++; }
+        if (ts >= nextCheck) {
+            if (checkedFrames > 20 && slowFrames / checkedFrames > 0.5) {
+                degradeStep++;
+                var target = Math.max(8, Math.round(leaves.length * 0.65));
+                while (leaves.length > target) {
+                    var gone = leaves.pop();
+                    if (gone.el.parentNode) { gone.el.parentNode.removeChild(gone.el); }
+                }
+            }
+            slowFrames = 0; checkedFrames = 0; nextCheck = ts + 3000;
+        }
     }
 
     function frame(ts) {
         if (!lastTs) { lastTs = ts; }
-        var dt = Math.min((ts - lastTs) / 16.667, 3);         // frame-rate independent, capped after tab switch
+        var rawDt = ts - lastTs;
+        var dt = Math.min(rawDt / 16.667, 3);                 // frame-rate independent, capped after tab switch
         lastTs = ts;
         clock += dt / 60;
 
         var p = Math.min((ts - t0) / FADE_IN_MS, 1);
         var fade = p * p * (3 - 2 * p);
         var wind = windAt(clock);
-
-        backCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        frontCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        backCtx.clearRect(0, 0, W, H);
-        frontCtx.clearRect(0, 0, W, H);
+        var fading = p < 1;
+        var justFinished = !fading && !frame.done;
+        if (justFinished) { frame.done = true; }
 
         for (var i = 0; i < leaves.length; i++) {
             var l = leaves[i];
-            update(l, dt, wind);
-            drawLeaf(l.layer === 1 ? frontCtx : backCtx, l, fade);
+            step(l, dt, wind);
+            paint(l);
+            if (fading || justFinished) { l.el.style.opacity = (l.alpha * fade).toFixed(3); }
         }
+        if (ts > t0 + FADE_IN_MS) { adaptToSpeed(rawDt, ts); }
+        requestAnimationFrame(frame);
+    }
+
+    function init() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        backBox = makeBox(1, 'wind-back');     // above the tree, below the text (text is z-index 2)
+        frontBox = makeBox(3, 'wind-front');   // above the text
+        buildLeaves();
+        window.addEventListener('resize', function () { W = window.innerWidth; H = window.innerHeight; });
+        t0 = performance.now();
+        nextCheck = t0 + FADE_IN_MS + 3000;
         requestAnimationFrame(frame);
     }
 
     window.startWindLeaves = function () {
         if (started) { return; }
         started = true;
-        back = makeCanvas(1, 'wind-back');     // above the tree, below the text (text is z-index 2)
-        front = makeCanvas(3, 'wind-front');   // above the text
-        backCtx = back.getContext('2d');
-        frontCtx = front.getContext('2d');
-        resize();
-        buildLeaves();
-        window.addEventListener('resize', resize);
-        t0 = performance.now();
-        requestAnimationFrame(frame);
+        setTimeout(init, START_DELAY_MS);
     };
 })();
