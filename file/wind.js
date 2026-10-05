@@ -13,11 +13,11 @@
  * Start it with:  startWindLeaves();
  *
  * Quick tuning (change only these numbers):
- *   WIND_DENSITY   1 = normal, 0.5 = fewer leaves, 1.5 = more leaves
+ *   WIND_DENSITY   1.4 = current, 1 = a bit fewer leaves, 2 = many more leaves
  *   WIND_SPEED     1 = normal, 0.7 = slower, 1.3 = faster
  */
 (function () {
-    var WIND_DENSITY = 1;
+    var WIND_DENSITY = 1.4;
     var WIND_SPEED = 1;
 
     var COLORS = ['#ff6b81', '#ff4757', '#e84393', '#fd79a8', '#c0392b', '#eb2f06'];
